@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Asset Scanner</title>
 <style>
-:root{--bg:#f4f6f9;--card:#fff;--tx:#1b2430;--mut:#6b7686;--bd:#d9dfe7;--pri:#2563eb;--prit:#fff;--ok:#16a34a;--bad:#dc2626;--warn:#b45309;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141b;--card:#18202b;--tx:#e8edf3;--mut:#93a0b1;--bd:#2a3544;--pri:#3b82f6;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#0f141b;--card:#18202b;--tx:#e8edf3;--mut:#93a0b1;--bd:#2a3544;--pri:#3b82f6;--ok:#4ade80;--bad:#f87171;--warn:#fbbf24;color-scheme:dark}
+:root{--bg:#f4f6f9;--card:#fff;--tx:#1b2430;--mut:#6b7686;--bd:#d9dfe7;--pri:#2563eb;--prit:#fff;--ok:#16a34a;--okbg:#dcfce7;--bad:#dc2626;--badbg:#fee2e2;--warn:#b45309;--warnbg:#fef3c7;--infobg:#eff6ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f141b;--card:#18202b;--tx:#e8edf3;--mut:#93a0b1;--bd:#2a3544;--pri:#3b82f6;--ok:#4ade80;--okbg:#143321;--bad:#f87171;--badbg:#3b1818;--warn:#fbbf24;--warnbg:#382a10;--infobg:#17253b;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f141b;--card:#18202b;--tx:#e8edf3;--mut:#93a0b1;--bd:#2a3544;--pri:#3b82f6;--ok:#4ade80;--okbg:#143321;--bad:#f87171;--badbg:#3b1818;--warn:#fbbf24;--warnbg:#382a10;--infobg:#17253b;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans Thai",Sarabun,sans-serif;font-size:16px;line-height:1.45}
@@ -18,15 +18,19 @@ label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
 label:first-child{margin-top:0}
 input{width:100%;padding:11px 12px;font-size:16px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
 input:focus{outline:2px solid var(--pri);border-color:transparent}
-.row{display:flex;gap:8px}
-button{font:inherit;border:0;border-radius:10px;padding:11px 14px;background:var(--pri);color:var(--prit);cursor:pointer;font-weight:600}
+.row{display:flex;gap:8px;align-items:center}
+button{font:inherit;border:0;border-radius:10px;padding:11px 14px;background:var(--pri);color:var(--prit);cursor:pointer;font-weight:600;white-space:nowrap}
 button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
 button.del{background:transparent;color:var(--bad);padding:6px 8px}
 button.big{width:100%;margin-top:14px;padding:14px;font-size:17px}
+button.sm{padding:4px 8px;font-size:12px;border-radius:6px}
 .hint{font-size:12px;color:var(--mut);margin-top:4px}
 #reader{width:100%;margin-top:10px;border-radius:10px;overflow:hidden}
 .msg{margin-top:10px;font-size:14px;min-height:20px}
 .ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.lookup-box{margin-top:8px;padding:8px 10px;border-radius:9px;font-size:13px;border:1px solid var(--bd);background:var(--infobg);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.lookup-box.ok{background:var(--okbg);border-color:var(--ok);color:var(--tx)}
+.lookup-box.warn{background:var(--warnbg);border-color:var(--warn);color:var(--tx)}
 .item{border-top:1px solid var(--bd);padding:10px 0;display:flex;gap:8px;align-items:flex-start}
 .item:first-child{border-top:0}
 .item .b{flex:1;min-width:0}
@@ -34,33 +38,84 @@ button.big{width:100%;margin-top:14px;padding:14px;font-size:17px}
 .meta{font-size:13px;color:var(--mut)}
 .head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx);padding:8px;font-size:12px}
+
+/* Searchable & Creatable Dropdown (Combobox) */
+.combo{position:relative}
+.combo input{padding-right:64px}
+.combo-actions{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:2px}
+.combo-btn{background:transparent;color:var(--mut);border:0;padding:6px 8px;border-radius:7px;font-size:14px;line-height:1;font-weight:400}
+.combo-btn:hover{background:var(--bd);color:var(--tx)}
+.combo-menu{position:absolute;left:0;right:0;top:calc(100% + 4px);max-height:230px;overflow-y:auto;background:var(--card);border:1px solid var(--bd);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:50;padding:4px}
+.combo-opt{padding:9px 10px;border-radius:7px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:15px}
+.combo-opt:hover,.combo-opt.active{background:var(--infobg)}
+.combo-opt.add{color:var(--pri);font-weight:600;border-top:1px dashed var(--bd);margin-top:2px}
+.combo-empty{padding:9px 10px;font-size:13px;color:var(--mut);text-align:center}
+.label-row{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 4px}
+.label-row label{margin:0}
+.link-btn{background:none;border:0;color:var(--pri);font-size:12px;padding:0;cursor:pointer;font-weight:500}
+.conn-bar{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border-radius:12px;background:var(--card);border:1px solid var(--bd);font-size:13px}
+.conn-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--mut);display:inline-block;flex-shrink:0}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--okbg)}
+.dot.warn{background:var(--warn);box-shadow:0 0 0 3px var(--warnbg)}
+.dot.bad{background:var(--bad);box-shadow:0 0 0 3px var(--badbg)}
 </style>
 </head>
 <body>
 <main>
 <h1>📦 บันทึกเลข Asset</h1>
 
+<div class="conn-bar">
+  <div class="conn-left">
+    <span id="connDot" class="dot warn"></span>
+    <strong id="connText">กำลังตรวจสอบการเชื่อมต่อ…</strong>
+    <span id="syncState" class="meta"></span>
+  </div>
+  <div class="row">
+    <button id="sync" class="sec sm" type="button" hidden>ส่งรายการที่ค้าง</button>
+    <button id="recheck" class="sec sm" type="button">🔄 เช็คสถานะ</button>
+  </div>
+</div>
+
 <div class="card">
   <label for="tag">Tag (Asset No.)</label>
-  <div class="row">
+  <div class="row" id="tagRow">
     <input id="tag" placeholder="สแกนหรือพิมพ์เลข Tag" autocomplete="off">
     <button id="scanBtn" type="button">📷 สแกน</button>
   </div>
-  <div id="reader" hidden></div>
   <div class="hint">ใช้กล้องมือถือสแกนบาร์โค้ด/QR บน Tag</div>
 
   <label for="sn">S/N (กรณี Tag จางมองไม่เห็น)</label>
-  <div class="row">
+  <div class="row" id="snRow">
     <input id="sn" placeholder="Serial Number" autocomplete="off">
     <button id="scanSn" type="button" class="sec">📷</button>
   </div>
 
-  <label for="dept">แผนก</label>
-  <input id="dept" list="deptList" placeholder="เช่น IT, บัญชี, ผลิต" autocomplete="off">
-  <datalist id="deptList"></datalist>
+  <div id="reader" hidden></div>
+  <div id="lookupBox" class="lookup-box" hidden></div>
+
+  <div class="label-row">
+    <label for="dept">แผนก</label>
+    <button id="refreshLists" type="button" class="link-btn" title="ดึงรายชื่อแผนกและผู้บันทึกจาก Google Sheet">🔄 อัปเดตรายชื่อจากชีต</button>
+  </div>
+  <div class="combo" id="deptCombo">
+    <input id="dept" placeholder="ค้นหา เลือก หรือพิมพ์เพิ่มแผนกใหม่" autocomplete="off">
+    <div class="combo-actions">
+      <button type="button" class="combo-btn" id="deptClr" title="ล้างช่องแผนก" hidden>✕</button>
+      <button type="button" class="combo-btn" id="deptToggle" title="ดูรายชื่อแผนกทั้งหมด" aria-label="เปิดรายการแผนก">▾</button>
+    </div>
+    <div class="combo-menu" id="deptMenu" hidden></div>
+  </div>
 
   <label for="rec">ผู้บันทึก</label>
-  <input id="rec" placeholder="ชื่อผู้บันทึก" autocomplete="off">
+  <div class="combo" id="recCombo">
+    <input id="rec" placeholder="ค้นหา เลือก หรือพิมพ์เพิ่มชื่อผู้บันทึก" autocomplete="off">
+    <div class="combo-actions">
+      <button type="button" class="combo-btn" id="recClr" title="ล้างช่องผู้บันทึก" hidden>✕</button>
+      <button type="button" class="combo-btn" id="recToggle" title="ดูรายชื่อผู้บันทึกทั้งหมด" aria-label="เปิดรายการผู้บันทึก">▾</button>
+    </div>
+    <div class="combo-menu" id="recMenu" hidden></div>
+  </div>
 
   <label for="dt">วันเวลาที่บันทึก</label>
   <input id="dt" type="datetime-local">
@@ -69,18 +124,6 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
   <button id="save" class="big" type="button">💾 บันทึก</button>
   <div id="msg" class="msg" role="status"></div>
 </div>
-
-<details class="card" id="gs">
-  <summary style="cursor:pointer;font-weight:600">🔗 เชื่อม Google Sheet <span id="syncState" class="meta"></span></summary>
-  <label for="url">Apps Script URL</label>
-  <input id="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
-  <label for="tok">รหัสลับ (Token)</label>
-  <input id="tok" type="password" autocomplete="off">
-  <div class="row" style="margin-top:10px">
-    <button id="test" class="sec" type="button">ทดสอบการเชื่อมต่อ</button>
-    <button id="sync" type="button">ส่งรายการที่ค้าง</button>
-  </div>
-</details>
 
 <div class="card">
   <div class="head">
@@ -100,14 +143,37 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
-const KEY='asset_records_v1', PK='asset_prefs_v1', CK='asset_cfg_v1';
-// ใส่ค่าเริ่มต้นได้ที่นี่ (ถ้า repo เป็น private) หรือกรอกในหน้าเว็บของแต่ละเครื่อง
-const DEFAULT_URL='', DEFAULT_TOKEN='';
-let recs=[], prefs={rec:'',depts:[]}, scanner=null, target=null;
+const KEY='asset_records_v1', PK='asset_prefs_v1';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxwpCcQ29KVocQrenEB9Ft5qUtl_znXyC3BQrtUdNiMKm-r7Uzf3qXU_lJjoErx-7D2sg/exec';
+const SCRIPT_TOKEN='AssetsRam2#10240';
+let recs=[], prefs={rec:'',dept:'',depts:[],users:[],customDepts:[],customUsers:[]}, scanner=null, stopping=false, target=null;
+
+function norm(v){
+  const s=String(v==null?'':v).trim().toUpperCase().replace(/\s+/g,'');
+  return /^(-+|N\/?A|NONE|NULL|ไม่มี)$/i.test(s)?'':s;
+}
+function mergeUnique(base, extra){
+  const seen=new Set(), out=[];
+  [...(base||[]),...(extra||[])].forEach(x=>{
+    const v=String(x||'').trim();
+    if(!v)return;
+    const k=v.toLowerCase();
+    if(!seen.has(k)){seen.add(k);out.push(v)}
+  });
+  return out;
+}
 
 function load(){
   try{recs=JSON.parse(localStorage.getItem(KEY)||'[]')||[]}catch(e){recs=[]}
-  try{prefs=Object.assign(prefs,JSON.parse(localStorage.getItem(PK)||'{}'))}catch(e){}
+  try{
+    const p=JSON.parse(localStorage.getItem(PK)||'{}')||{};
+    prefs.rec=p.rec||'';
+    prefs.dept=p.dept||'';
+    prefs.depts=Array.isArray(p.depts)?p.depts:[];
+    prefs.users=Array.isArray(p.users)?p.users:[];
+    prefs.customDepts=Array.isArray(p.customDepts)?p.customDepts:[];
+    prefs.customUsers=Array.isArray(p.customUsers)?p.customUsers:[];
+  }catch(e){}
 }
 function persist(){
   try{localStorage.setItem(KEY,JSON.stringify(recs));localStorage.setItem(PK,JSON.stringify(prefs))}
@@ -118,57 +184,199 @@ function fmt(s){const d=new Date(s);return isNaN(d)?s:d.toLocaleString('th-TH',{
 function say(t,c){const m=$('msg');m.textContent=t;m.className='msg '+(c||'')}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
-function renderDepts(){$('deptList').innerHTML=prefs.depts.map(d=>`<option value="${esc(d)}">`).join('')}
+/* ---------- Searchable & Creatable Combobox ---------- */
+function setupCombo({inputId, menuId, toggleId, clrId, getItems, addItem}){
+  const inp=$(inputId), menu=$(menuId), tog=$(toggleId), clr=$(clrId);
+  let showAll=false;
+
+  function updateClr(){clr.hidden=!inp.value.trim()}
+  function close(){menu.hidden=true;showAll=false}
+  function selectVal(v, isNew){
+    const val=String(v||'').trim();
+    inp.value=val;
+    updateClr();
+    if(val && isNew) addItem(val);
+    close();
+  }
+  function renderMenu(){
+    updateClr();
+    const raw=inp.value.trim(), q=raw.toLowerCase();
+    const all=getItems();
+    const filtered=(showAll||!q)?all:all.filter(x=>x.toLowerCase().includes(q));
+    const exact=raw && all.some(x=>x.toLowerCase()===q);
+    let html='';
+    if(filtered.length){
+      html+=filtered.map(x=>{
+        const isCur=x.toLowerCase()===q;
+        return `<div class="combo-opt${isCur?' active':''}" data-val="${esc(x)}"><span>${esc(x)}</span>${isCur?'<span class="ok">✔</span>':''}</div>`;
+      }).join('');
+    }else if(!raw){
+      html+=`<div class="combo-empty">ยังไม่มีรายการ — พิมพ์เพื่อเพิ่มใหม่</div>`;
+    }
+    if(raw && !exact){
+      html+=`<div class="combo-opt add" data-add="${esc(raw)}">➕ เพิ่ม "${esc(raw)}"</div>`;
+    }
+    menu.innerHTML=html;
+    menu.hidden=false;
+  }
+
+  inp.addEventListener('focus',()=>{showAll=true;renderMenu()});
+  inp.addEventListener('click',()=>{if(menu.hidden){showAll=true;renderMenu()}});
+  inp.addEventListener('input',()=>{showAll=false;renderMenu()});
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){close()}
+  });
+  tog.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    if(!menu.hidden && showAll){close()}
+    else{inp.focus();showAll=true;renderMenu()}
+  });
+  clr.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    inp.value='';updateClr();inp.focus();showAll=true;renderMenu();
+  });
+  menu.addEventListener('pointerdown',e=>{
+    const opt=e.target.closest('.combo-opt');
+    if(!opt)return;
+    e.preventDefault();
+    if(opt.dataset.add!==undefined) selectVal(opt.dataset.add, true);
+    else if(opt.dataset.val!==undefined) selectVal(opt.dataset.val, false);
+  });
+  document.addEventListener('pointerdown',e=>{
+    if(!inp.closest('.combo').contains(e.target)) close();
+  });
+  return {refresh:updateClr, close};
+}
+
+const deptCombo=setupCombo({
+  inputId:'dept', menuId:'deptMenu', toggleId:'deptToggle', clrId:'deptClr',
+  getItems:()=>prefs.depts,
+  addItem:v=>{prefs.customDepts=mergeUnique(prefs.customDepts,[v]);prefs.depts=mergeUnique(prefs.depts,[v]);persist()}
+});
+const recCombo=setupCombo({
+  inputId:'rec', menuId:'recMenu', toggleId:'recToggle', clrId:'recClr',
+  getItems:()=>prefs.users,
+  addItem:v=>{prefs.customUsers=mergeUnique(prefs.customUsers,[v]);prefs.users=mergeUnique(prefs.users,[v]);persist()}
+});
+
+function setConn(state, text){
+  $('connDot').className='dot '+state;
+  $('connText').textContent=text;
+}
+
 function render(){
   const q=$('q').value.trim().toLowerCase();
   const rows=recs.filter(r=>!q||[r.tag,r.sn,r.dept,r.rec].join(' ').toLowerCase().includes(q));
   $('count').textContent=`รายการที่บันทึก (${recs.length})`;
   const pend=recs.filter(r=>!r.synced).length;
-  $('syncState').textContent=!cfg.url?'· ยังไม่ได้ตั้งค่า':pend?`· ค้างส่ง ${pend}`:'· ซิงก์แล้ว ✔';
+  $('syncState').textContent=pend?`· ⏳ ค้างส่ง ${pend} รายการ`:'· ซิงก์ครบแล้ว ✔';
+  $('sync').hidden=!pend;
   $('list').innerHTML=rows.length?rows.map(r=>`<div class="item"><div class="b"><b>${esc(r.tag||'(ไม่มี Tag)')}</b>${r.sn?` · S/N: ${esc(r.sn)}`:''}<div class="meta">${esc(r.dept)} · ${esc(r.rec)} · ${esc(fmt(r.dt))}${r.synced?' · <span class="ok">✔ ในชีต</span>':' · <span class="warn">⏳ รอส่ง</span>'}</div></div><button class="del" data-id="${r.id}" aria-label="ลบ">ลบ</button></div>`).join(''):'<div class="hint" style="margin-top:10px">ยังไม่มีรายการ</div>';
 }
 
+/* ---------- Camera Scanner ---------- */
+function resetScanBtns(){
+  $('scanBtn').textContent='📷 สแกน';
+  $('scanSn').textContent='📷';
+}
 async function stopScan(){
+  if(stopping)return;
+  stopping=true;
   if(scanner){try{await scanner.stop();scanner.clear()}catch(e){} scanner=null}
-  $('reader').hidden=true;$('scanBtn').textContent='📷 สแกน';target=null;
+  $('reader').hidden=true;resetScanBtns();target=null;stopping=false;
 }
 async function startScan(field){
-  if(scanner){await stopScan();return}
+  if(scanner){
+    const prev=target;
+    await stopScan();
+    if(prev===field)return;
+  }
   if(typeof Html5Qrcode==='undefined'){say('โหลดตัวสแกนไม่สำเร็จ — พิมพ์เลขเองได้','bad');return}
-  target=field;$('reader').hidden=false;
+  target=field;
+  const anchor=field==='sn'?$('snRow'):$('tagRow');
+  anchor.insertAdjacentElement('afterend',$('reader'));
+  $('reader').hidden=false;
+  resetScanBtns();
   if(field==='tag')$('scanBtn').textContent='✖ ปิดกล้อง';
+  else $('scanSn').textContent='✖';
   say('กำลังเปิดกล้อง…');
   scanner=new Html5Qrcode('reader');
+  let handled=false;
   try{
     await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:250,height:160}},async txt=>{
+      if(handled)return;
+      handled=true;
       const f=target;$(f).value=txt.trim();
       if(navigator.vibrate)navigator.vibrate(80);
-      await stopScan();say('สแกนได้: '+txt,'ok');
-      if(f==='tag')checkDup();
+      await stopScan();say('สแกนได้: '+txt.trim(),'ok');
+      onAssetInput();
     },()=>{});
     say('ส่องกล้องไปที่บาร์โค้ด/QR');
   }catch(e){
-    scanner=null;$('reader').hidden=true;$('scanBtn').textContent='📷 สแกน';
+    scanner=null;$('reader').hidden=true;resetScanBtns();target=null;
     say('เปิดกล้องไม่ได้ (ต้องอนุญาตสิทธิ์กล้อง) — พิมพ์เลขเองได้','bad');
   }
 }
-function checkDup(){
-  const t=$('tag').value.trim();
-  if(t&&recs.some(r=>r.tag===t))say('⚠ Tag นี้เคยบันทึกแล้ว','warn');
+
+/* ---------- Duplicate Check & Master Lookup ---------- */
+let lookupTimer=null, lookupSeq=0;
+function onAssetInput(){
+  const t=norm($('tag').value), s=norm($('sn').value);
+  if(t && recs.some(r=>norm(r.tag)===t)) say('⚠ Tag นี้เคยบันทึกในเครื่องนี้แล้ว','warn');
+  else if(s && recs.some(r=>norm(r.sn)===s)) say('⚠ S/N นี้เคยบันทึกในเครื่องนี้แล้ว','warn');
+  clearTimeout(lookupTimer);
+  if(!t && !s){$('lookupBox').hidden=true;return}
+  lookupTimer=setTimeout(()=>lookupMaster(t,s),300);
+}
+
+async function lookupMaster(t,s){
+  if(!SCRIPT_URL||(!t&&!s)){$('lookupBox').hidden=true;return}
+  const seq=++lookupSeq;
+  const box=$('lookupBox');
+  box.className='lookup-box';
+  box.innerHTML='<span>🔍 กำลังค้นหาใน Master…</span>';
+  box.hidden=false;
+  try{
+    const u=`${SCRIPT_URL}?token=${encodeURIComponent(SCRIPT_TOKEN)}&action=lookup&tag=${encodeURIComponent(t)}&sn=${encodeURIComponent(s)}`;
+    const r=await fetch(u);
+    const j=await r.json();
+    if(seq!==lookupSeq)return;
+    if(!j.ok){box.hidden=true;return}
+    setConn('ok','เชื่อมต่อ Google Sheet แล้ว');
+    if(j.found){
+      box.className='lookup-box ok';
+      const btn=j.dept?`<button type="button" class="sec sm" id="useMasterDept">ใช้แผนก "${esc(j.dept)}"</button>`:'';
+      box.innerHTML=`<span>✔ <b>พบใน Master</b>${j.info?' · '+esc(j.info):''}</span>${btn}`;
+      const b=$('useMasterDept');
+      if(b)b.onclick=()=>{
+        $('dept').value=j.dept;
+        prefs.depts=mergeUnique(prefs.depts,[j.dept]);
+        persist();deptCombo.refresh();
+      };
+    }else{
+      box.className='lookup-box warn';
+      box.innerHTML='<span>⚠ ไม่พบใน Master-Old (รายการนอกทะเบียน)</span>';
+    }
+  }catch(e){
+    if(seq===lookupSeq) box.hidden=true;
+  }
 }
 
 function save(){
   const tag=$('tag').value.trim(), sn=$('sn').value.trim(), dept=$('dept').value.trim(), rec=$('rec').value.trim(), dt=$('dt').value;
-  if(!tag&&!sn)return say('กรุณากรอก Tag หรือ S/N อย่างน้อยหนึ่งช่อง','bad');
-  if(!dept)return say('กรุณาระบุแผนก','bad');
-  if(!rec)return say('กรุณาระบุผู้บันทึก','bad');
+  const nt=norm(tag), ns=norm(sn);
+  if(!nt&&!ns)return say('กรุณากรอก Tag หรือ S/N อย่างน้อยหนึ่งช่อง','bad');
+  if(!dept){$('dept').focus();return say('กรุณาระบุแผนก','bad')}
+  if(!rec){$('rec').focus();return say('กรุณาระบุผู้บันทึก','bad')}
   if(!dt)return say('กรุณาระบุวันเวลา','bad');
-  const dup=recs.some(r=>(tag&&r.tag===tag)||(!tag&&sn&&r.sn===sn));
-  if(dup&&!confirm('มีเลขนี้อยู่แล้ว ต้องการบันทึกซ้ำหรือไม่?'))return;
+  const dup=recs.some(r=>(nt&&norm(r.tag)===nt)||(ns&&norm(r.sn)===ns));
+  if(dup&&!confirm('มีเลข Tag หรือ S/N นี้อยู่แล้ว ต้องการบันทึกซ้ำหรือไม่?'))return;
   recs.unshift({id:Date.now()+'-'+Math.random().toString(36).slice(2,6),tag,sn,dept,rec,dt});
-  prefs.rec=rec;if(dept&&!prefs.depts.includes(dept))prefs.depts.push(dept);
-  persist();renderDepts();render();
-  $('tag').value='';$('sn').value='';$('dt').value=nowLocal();
+  prefs.rec=rec;prefs.dept=dept;
+  prefs.depts=mergeUnique(prefs.depts,[dept]);
+  prefs.users=mergeUnique(prefs.users,[rec]);
+  persist();deptCombo.refresh();recCombo.refresh();render();
+  $('tag').value='';$('sn').value='';$('dt').value=nowLocal();$('lookupBox').hidden=true;
   say('✔ บันทึกแล้ว: '+(tag||sn),'ok');
   if(navigator.vibrate)navigator.vibrate(40);
   $('tag').focus();
@@ -187,50 +395,107 @@ async function exportCSV(){
   catch(e){o.select();say('เลือกข้อความด้านล่างแล้วกดคัดลอกเอง','warn')}
 }
 
-let cfg={url:DEFAULT_URL,tok:DEFAULT_TOKEN},syncing=false;
-try{const c=JSON.parse(localStorage.getItem(CK)||'null');if(c&&c.url)cfg=c}catch(e){}
-function saveCfg(){cfg={url:$('url').value.trim(),tok:$('tok').value.trim()};try{localStorage.setItem(CK,JSON.stringify(cfg))}catch(e){}render()}
+/* ---------- Google Sheet Sync & Lists ---------- */
+let syncing=false,syncMore=false;
+
+async function fetchLists(manual){
+  if(manual)say('กำลังดึงรายชื่อแผนกและผู้บันทึกจากชีต…');
+  try{
+    const r=await fetch(`${SCRIPT_URL}?token=${encodeURIComponent(SCRIPT_TOKEN)}&action=lists`);
+    const j=await r.json();
+    if(!j.ok)throw new Error(j.error||'ดึงรายชื่อไม่สำเร็จ');
+    setConn('ok','เชื่อมต่อ Google Sheet แล้ว');
+    if(Array.isArray(j.depts)&&j.depts.length) prefs.depts=mergeUnique(j.depts,prefs.customDepts);
+    if(Array.isArray(j.users)&&j.users.length) prefs.users=mergeUnique(j.users,prefs.customUsers);
+    persist();
+    if(manual){
+      say(`✔ อัปเดตรายชื่อแล้ว (แผนก ${prefs.depts.length} · ผู้บันทึก ${prefs.users.length})`,'ok');
+    }
+  }catch(e){
+    setConn('bad','เชื่อมต่อชีตไม่ได้ (ทำงานโหมดออฟไลน์)');
+    if(manual)say('ดึงรายชื่อจากชีตไม่สำเร็จ: '+e.message,'warn');
+  }
+}
+
 async function syncAll(manual){
-  if(!cfg.url){if(manual)say('ยังไม่ได้ตั้งค่า Apps Script URL','bad');return}
   const pend=recs.filter(r=>!r.synced);
   if(!pend.length){if(manual)say('ไม่มีรายการค้างส่ง','ok');return}
-  if(syncing)return;syncing=true;
+  if(syncing){syncMore=true;return}
+  syncing=true;syncMore=false;
+  let ok=false;
   try{
-    const res=await fetch(cfg.url,{method:'POST',body:JSON.stringify({token:cfg.tok,records:pend})});
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({token:SCRIPT_TOKEN,records:pend})});
     const j=await res.json();
     if(!j.ok)throw new Error(j.error||'ส่งไม่สำเร็จ');
+    setConn('ok','เชื่อมต่อ Google Sheet แล้ว');
     const ids=new Set(pend.map(r=>r.id));
     recs.forEach(r=>{if(ids.has(r.id))r.synced=true});
     persist();render();say(`✔ ส่งเข้า Google Sheet แล้ว ${pend.length} รายการ`,'ok');
-  }catch(e){say('ส่งเข้าชีตไม่สำเร็จ เก็บในเครื่องไว้ก่อน: '+e.message,'warn')}
-  finally{syncing=false}
+    ok=true;
+  }catch(e){
+    setConn('bad','เชื่อมต่อชีตไม่ได้ (เก็บในเครื่องไว้ก่อน)');
+    say('ส่งเข้าชีตไม่สำเร็จ เก็บในเครื่องไว้ก่อน: '+e.message,'warn');
+  }
+  finally{
+    syncing=false;
+    if(ok&&(syncMore||recs.some(r=>!r.synced)))syncAll();
+  }
 }
-async function testConn(){
-  saveCfg();
-  if(!cfg.url)return say('กรุณาใส่ URL','bad');
-  say('กำลังทดสอบ…');
+async function checkConn(manual){
+  setConn('warn','กำลังตรวจสอบการเชื่อมต่อ…');
+  if(manual)say('กำลังตรวจสอบการเชื่อมต่อ…');
   try{
-    const r=await fetch(cfg.url+'?token='+encodeURIComponent(cfg.tok));const j=await r.json();
+    const r=await fetch(SCRIPT_URL+'?token='+encodeURIComponent(SCRIPT_TOKEN));
+    const j=await r.json();
     if(!j.ok)throw new Error(j.error);
-    say(`✔ เชื่อมต่อสำเร็จ (ในชีตมี ${j.rows} แถว)`,'ok');
-  }catch(e){say('เชื่อมต่อไม่ได้: '+e.message,'bad')}
+    setConn('ok',`เชื่อมต่อ Google Sheet แล้ว (ในชีต ${j.rows} แถว)`);
+    if(manual)say(`✔ เชื่อมต่อสำเร็จ (ในชีตมี ${j.rows} แถว)`,'ok');
+    fetchLists(false);
+    syncAll();
+  }catch(e){
+    setConn('bad','เชื่อมต่อชีตไม่ได้ (โหมดออฟไลน์)');
+    if(manual)say('เชื่อมต่อไม่ได้: '+e.message,'bad');
+  }
 }
-$('url').value=cfg.url;$('tok').value=cfg.tok;if(!cfg.url)$('gs').open=true;
-$('test').onclick=testConn;
-$('sync').onclick=()=>{saveCfg();syncAll(true)};
-$('url').onchange=saveCfg;$('tok').onchange=saveCfg;
-window.addEventListener('online',()=>syncAll());
+
+$('recheck').onclick=()=>checkConn(true);
+$('sync').onclick=()=>syncAll(true);
+$('refreshLists').onclick=()=>fetchLists(true);
+window.addEventListener('online',()=>checkConn(false));
+window.addEventListener('offline',()=>setConn('bad','ออฟไลน์ (บันทึกในเครื่องก่อน)'));
 $('scanBtn').onclick=()=>startScan('tag');
 $('scanSn').onclick=()=>startScan('sn');
 $('save').onclick=save;
 $('exp').onclick=exportCSV;
 $('q').oninput=render;
-$('tag').onchange=checkDup;
+$('tag').oninput=onAssetInput;
+$('sn').oninput=onAssetInput;
 $('clr').onclick=()=>{if(recs.length&&confirm('ลบข้อมูลทั้งหมด? (ควรคัดลอก CSV ไว้ก่อน)')){recs=[];persist();render();$('out').hidden=true}};
 $('list').onclick=e=>{const id=e.target.dataset&&e.target.dataset.id;if(id&&confirm('ลบรายการนี้?')){recs=recs.filter(r=>r.id!==id);persist();render()}};
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'&&!['q','url','tok'].includes(e.target.id)){e.preventDefault();if(e.target.id==='tag'||e.target.id==='sn')$('dept').focus();else save()}});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.tagName==='INPUT'&&e.target.id!=='q'){
+    e.preventDefault();
+    deptCombo.close();recCombo.close();
+    if(e.target.id==='tag'||e.target.id==='sn'){
+      if(!$('dept').value.trim())$('dept').focus();
+      else if(!$('rec').value.trim())$('rec').focus();
+      else save();
+    }else if(e.target.id==='dept'&&!$('rec').value.trim()){
+      $('rec').focus();
+    }else{
+      save();
+    }
+  }
+});
 
-load();$('rec').value=prefs.rec||'';$('dt').value=nowLocal();renderDepts();render();syncAll();
+load();
+$('dept').value=prefs.dept||'';
+$('rec').value=prefs.rec||'';
+$('dt').value=nowLocal();
+deptCombo.refresh();
+recCombo.refresh();
+render();
+checkConn(false);
 </script>
 </body>
 </html>
