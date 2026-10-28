@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ตรวจนับ IT Asset</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0F2A33; --ink2:#4A5F67; --paper:#EEF3F2; --card:#FFFFFF; --line:#D3DDDB;
+  --brand:#0E5A6B; --brand-d:#0A4350;
+  --ok:#17794C; --okbg:#DDF3E8; --warn:#8A5A00; --warnbg:#FFEFC2; --bad:#A92B2B; --badbg:#FADCD8;
+  --font:"IBM Plex Sans Thai","Sarabun",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--font)}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid #F2A900;outline-offset:2px}
+header{background:var(--ink);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:5}
+header h1{font-size:16px;font-weight:600;margin:0;flex:1}
+.badge{font-size:12px;padding:3px 10px;border-radius:99px;background:#1d4a56;white-space:nowrap}
+.badge.pending{background:#F2A900;color:#2b1d00;font-weight:600}
+nav{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:45px;z-index:4}
+nav button{flex:1;border:0;background:none;padding:12px 4px;font-weight:500;color:var(--ink2);border-bottom:3px solid transparent;cursor:pointer}
+nav button[aria-selected=true]{color:var(--brand);border-bottom-color:var(--brand);font-weight:700}
+main{max-width:760px;margin:0 auto;padding:14px}
+section[hidden]{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+label{display:block;font-size:13px;color:var(--ink2);margin-bottom:3px}
+input,select{width:100%;padding:10px;border:1px solid #AEBDBA;border-radius:6px;background:#fff;min-height:42px}
+.scanrow{display:flex;gap:8px}
+#tag{font-size:22px;font-weight:600;letter-spacing:.5px;min-height:54px;border:2px solid var(--brand)}
+.btn{border:0;border-radius:6px;padding:0 16px;min-height:54px;background:var(--brand);color:#fff;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--brand-d)}
+.btn.sec{background:#fff;color:var(--brand);border:1px solid var(--brand);min-height:42px}
+.btn.sm{min-height:38px;padding:0 12px;font-size:14px}
+#reader{margin-top:10px;border-radius:6px;overflow:hidden;background:#000}
+.result{border-radius:8px;padding:16px 16px 14px;margin-bottom:12px;border-left:10px solid var(--line);background:#fff;min-height:132px}
+.result .state{font-size:26px;font-weight:700;line-height:1.2;margin:0 0 4px}
+.result .tagline{font-size:18px;font-weight:600;margin:0}
+.result .meta{margin:8px 0 0;color:var(--ink2);font-size:14px}
+.result .meta b{color:var(--ink);font-weight:600}
+.r-ok{background:var(--okbg);border-left-color:var(--ok)} .r-ok .state{color:var(--ok)}
+.r-moved,.r-dup{background:var(--warnbg);border-left-color:#E0A100} .r-moved .state,.r-dup .state{color:var(--warn)}
+.r-unknown{background:var(--badbg);border-left-color:var(--bad)} .r-unknown .state{color:var(--bad)}
+.r-idle .state{color:var(--ink2);font-size:18px;font-weight:500}
+.actions{display:flex;gap:8px;margin-top:12px}
+.counts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.counts div{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px;text-align:center}
+.counts strong{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.counts span{font-size:12px;color:var(--ink2)}
+ul.log{list-style:none;margin:0;padding:0}
+ul.log li{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+ul.log li:last-child{border-bottom:0}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ok)} .dot.moved{background:#E0A100} .dot.unknown{background:var(--bad)}
+ul.log .t{flex:1;min-width:0} ul.log .t b{display:block} ul.log .t span{font-size:13px;color:var(--ink2)}
+.x{border:1px solid var(--line);background:#fff;border-radius:6px;min-height:34px;padding:0 10px;cursor:pointer;color:var(--bad)}
+h2{font-size:16px;margin:0 0 10px}
+.kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.kpi div{background:#fff;border:1px solid var(--line);border-radius:6px;padding:10px 6px;text-align:center}
+.kpi strong{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.kpi span{font-size:12px;color:var(--ink2)}
+.bar{height:12px;background:#dfe7e5;border-radius:99px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%} .b-ok{background:var(--ok)} .b-mv{background:#E0A100}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:right} th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--ink2);font-size:13px}
+td .bar{margin-top:4px;height:6px}
+.item{padding:10px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0} .item b{font-size:16px} .item div{font-size:13px;color:var(--ink2)}
+.muted{color:var(--ink2);font-size:14px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:6px;max-width:90vw;z-index:20;display:none}
+#fatal{background:var(--badbg);color:var(--bad);padding:14px;border-radius:8px;margin:14px}
+@media (max-width:480px){.kpi{grid-template-columns:repeat(3,1fr)}.result .state{font-size:23px}}
+@media (prefers-reduced-motion:no-preference){.result{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<header>
+  <h1>ตรวจนับ IT Asset</h1>
+  <span id="sync" class="badge">กำลังโหลด…</span>
+</header>
+<nav role="tablist">
+  <button role="tab" data-tab="scan" aria-selected="true">สแกน</button>
+  <button role="tab" data-tab="report" aria-selected="false">สรุปผล</button>
+  <button role="tab" data-tab="follow" aria-selected="false">รายการติดตาม</button>
+</nav>
+<div id="fatal" hidden></div>
+
+<main>
+<section id="tab-scan">
+  <div class="card">
+    <label for="dept">แผนกที่กำลังตรวจ</label>
+    <select id="dept"><option value="">เลือกแผนก…</option></select>
+    <p class="muted" style="margin:8px 0 0">ผู้บันทึก: <b id="user">-</b></p>
+  </div>
+
+  <div class="card">
+    <label for="tag">Asset Tag (สแกนหรือพิมพ์แล้วกด Enter)</label>
+    <div class="scanrow">
+      <input id="tag" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <button class="btn" id="camBtn" type="button">เปิดกล้อง</button>
+    </div>
+    <div id="reader" hidden></div>
+    <div style="margin-top:10px"><label for="note">หมายเหตุ (ถ้ามี จะบันทึกกับรายการถัดไป แล้วล้างให้เอง)</label>
+      <input id="note" autocomplete="off" placeholder="เช่น หน้าจอแตก, ห้องตรวจ 2"></div>
+  </div>
+
+  <div id="result" class="result r-idle" aria-live="polite">
+    <p class="state">พร้อมสแกน</p>
+    <p class="meta">เลือกแผนก แล้วสแกนบาร์โค้ดที่ตัวเครื่อง</p>
+  </div>
+
+  <div class="counts">
+    <div><strong id="c-ok">0</strong><span>ตรงทะเบียน</span></div>
+    <div><strong id="c-moved">0</strong><span>ย้ายตำแหน่ง</span></div>
+    <div><strong id="c-unknown">0</strong><span>ไม่มีในทะเบียน</span></div>
+    <div><strong id="c-dup">0</strong><span>สแกนซ้ำ</span></div>
+  </div>
+
+  <div class="card"><h2>สแกนล่าสุด (ครั้งนี้)</h2>
+    <ul class="log" id="log"></ul>
+    <p class="muted" id="logEmpty">ยังไม่มีรายการ</p>
+  </div>
+</section>
+
+<section id="tab-report" hidden>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <h2 style="margin:0">ความคืบหน้าการตรวจนับ</h2>
+    <button class="btn sec sm" id="refresh" type="button">รีเฟรช</button>
+  </div>
+  <div id="reportBody"><p class="muted">กำลังโหลด…</p></div>
+</section>
+
+<section id="tab-follow" hidden>
+  <div class="card">
+    <div class="grid">
+      <div><label for="fKind">รายการ</label>
+        <select id="fKind"><option value="missing">ยังไม่พบ</option><option value="moved">ย้ายตำแหน่ง</option><option value="unknown">ไม่มีในทะเบียน</option></select></div>
+      <div><label for="fDept">แผนก</label><select id="fDept"><option value="">ทุกแผนก</option></select></div>
+    </div>
+    <div style="margin-top:10px"><label for="fSearch">ค้นหา (Tag / Serial / รุ่น)</label><input id="fSearch" autocomplete="off"></div>
+  </div>
+  <div class="card"><p class="muted" id="fCount"></p><div id="fList"></div></div>
+</section>
+</main>
+<div id="toast" role="status"></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').trim().toUpperCase();
+const LS = 'itaudit.v2';
+const load = () => { try { return JSON.parse(localStorage.getItem(LS) || '{}'); } catch (e) { return {}; } };
+const store = o => { try { localStorage.setItem(LS, JSON.stringify(Object.assign(load(), o))); } catch (e) {} };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const LABEL = { ok: 'ตรงตามทะเบียน', moved: 'ย้ายตำแหน่ง', unknown: 'ไม่มีในทะเบียน' };
+
+const S = { master: new Map(), scanned: new Map(), queue: load().queue || [], busy: false, user: '',
+            log: [], count: { ok: 0, moved: 0, unknown: 0, dup: 0 }, cam: null, lastCode: '', lastAt: 0, report: null };
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastT); toastT = setTimeout(() => t.style.display = 'none', 3500); }
+
+/* ---------- เสียง / สั่น ---------- */
+let actx;
+function beep(kind) {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = actx.createOscillator(), g = actx.createGain();
+    o.connect(g); g.connect(actx.destination);
+    o.type = 'sine'; o.frequency.value = kind === 'ok' ? 880 : kind === 'bad' ? 220 : 440;
+    g.gain.value = 0.08; o.start(); o.stop(actx.currentTime + (kind === 'ok' ? 0.09 : 0.28));
+  } catch (e) {}
+  if (kind !== 'ok' && navigator.vibrate) navigator.vibrate(kind === 'bad' ? [120, 60, 120] : 80);
+}
+
+/* ---------- เริ่มต้น ---------- */
+google.script.run.withSuccessHandler(init).withFailureHandler(fatal).getBootstrap();
+function fatal(e) { $('fatal').hidden = false; $('fatal').textContent = 'โหลดข้อมูลไม่สำเร็จ: ' + (e && e.message || e); $('sync').textContent = 'ผิดพลาด'; }
+
+function init(d) {
+  d.master.forEach(r => S.master.set(norm(r[0]), { tag: r[0], serial: r[1], type: r[2], model: r[3], dept: r[4], owner: r[5] }));
+  d.scanned.forEach(r => S.scanned.set(norm(r[0]), { dept: r[1], note: r[2], by: r[3] }));
+  S.user = d.user || '';
+  $('user').textContent = S.user || 'ไม่ทราบ (ต้องเปิดผ่านบัญชีองค์กร)';
+  const depts = [];
+  d.depts.concat(Array.from(S.master.values()).map(m => m.dept)).forEach(x => { if (x && depts.indexOf(x) < 0) depts.push(x); });
+  const opts = depts.map(x => `<option>${esc(x)}</option>`).join('');
+  $('dept').innerHTML = '<option value="">เลือกแผนก…</option>' + opts;
+  $('fDept').innerHTML = '<option value="">ทุกแผนก</option>' + opts;
+  const sv = load();
+  if (sv.dept && depts.indexOf(sv.dept) >= 0) $('dept').value = sv.dept;
+  $('dept').addEventListener('change', () => store({ dept: $('dept').value }));
+  renderPending(); flush();
+  $('tag').focus();
+}
+
+/* ---------- แท็บ ---------- */
+document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('nav button').forEach(x => x.setAttribute('aria-selected', x === b));
+  ['scan', 'report', 'follow'].forEach(t => $('tab-' + t).hidden = t !== b.dataset.tab);
+  if (b.dataset.tab === 'scan') $('tag').focus(); else loadReport(false);
+}));
+
+/* ---------- สแกน ---------- */
+$('tag').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); const v = $('tag').value; $('tag').value = ''; handleScan(v, false); }
+});
+
+function handleScan(raw, force) {
+  const tag = norm(raw);
+  if (!tag) return;
+  const dept = $('dept').value;
+  if (!dept) { toast('เลือกแผนกก่อนสแกน'); beep('warn'); $('dept').focus(); return; }
+  const m = S.master.get(tag), prior = S.scanned.get(tag);
+
+  if (prior && !force) {
+    S.count.dup++; updateCounts(); beep('warn');
+    showResult('dup', { tag, m, prior });
+    return;
+  }
+  // ผลเทียบกับทะเบียนใช้แสดงบนหน้าจอเท่านั้น ไม่ได้เก็บลงชีต (ชีตคำนวณจาก Master เอง)
+  const kind = !m ? 'unknown' : (norm(m.dept) !== norm(dept) ? 'moved' : 'ok');
+  const note = (force ? '[บันทึกซ้ำ] ' : '') + $('note').value.trim();
+  const rec = { id: uid(), tag: m ? m.tag : tag, dept, note: note.trim() };
+  S.queue.push(rec); persistQueue(); flush();
+  S.log.unshift({ id: rec.id, tag: rec.tag, kind, dept, note: rec.note, prior });
+  S.scanned.set(tag, { dept, note: rec.note, by: S.user });
+  S.count[kind]++; updateCounts(); renderLog();
+  $('note').value = '';
+  showResult(kind, { tag: rec.tag, m, dept, note: rec.note });
+  beep(kind === 'ok' ? 'ok' : kind === 'unknown' ? 'bad' : 'warn');
+}
+
+function showResult(kind, o) {
+  const el = $('result'), m = o.m;
+  el.className = 'result r-' + kind;
+  const info = m ? `<p class="meta"><b>${esc((m.type + ' ' + m.model).trim() || '-')}</b><br>Serial: ${esc(m.serial || '-')} · ผู้รับผิดชอบ: ${esc(m.owner || '-')}</p>` : '';
+  const where = `บันทึกที่ <b>${esc(o.dept)}</b>${o.note ? ' · ' + esc(o.note) : ''}`;
+  let html = '';
+  if (kind === 'ok') html = `<p class="state">ตรงตามทะเบียน</p><p class="tagline">${esc(o.tag)}</p>${info}<p class="meta">${where}</p>`;
+  if (kind === 'moved') html = `<p class="state">ย้ายตำแหน่ง</p><p class="tagline">${esc(o.tag)}</p>${info}<p class="meta">ทะเบียนอยู่ <b>${esc(m.dept)}</b> แต่พบที่ <b>${esc(o.dept)}</b> (บันทึกแล้ว)</p>`;
+  if (kind === 'unknown') html = `<p class="state">ไม่มีในทะเบียน</p><p class="tagline">${esc(o.tag)}</p><p class="meta">ตรวจป้ายอีกครั้ง หรือแจ้งพัสดุเพื่อเพิ่มทะเบียน (บันทึกแล้ว)</p>`;
+  if (kind === 'dup') {
+    const p = o.prior;
+    html = `<p class="state">สแกนไปแล้ว</p><p class="tagline">${esc(o.tag)}</p>${info}<p class="meta">ครั้งก่อน: <b>${esc(p.dept)}</b>${p.by ? ' · ' + esc(p.by) : ''}${p.note ? ' · ' + esc(p.note) : ''}</p>
+      <div class="actions"><button class="btn sm" id="dupSave" type="button">บันทึกซ้ำ (เครื่องย้ายมา)</button><button class="btn sec sm" id="dupSkip" type="button">ข้าม</button></div>`;
+  }
+  el.innerHTML = html;
+  if (kind === 'dup') {
+    $('dupSave').onclick = () => { handleScan(o.tag, true); $('tag').focus(); };
+    $('dupSkip').onclick = () => { idle(); $('tag').focus(); };
+  }
+}
+function idle() { const el = $('result'); el.className = 'result r-idle'; el.innerHTML = '<p class="state">พร้อมสแกน</p>'; }
+
+function updateCounts() { ['ok', 'moved', 'unknown', 'dup'].forEach(k => $('c-' + k).textContent = S.count[k]); }
+function renderLog() {
+  $('logEmpty').hidden = S.log.length > 0;
+  $('log').innerHTML = S.log.slice(0, 30).map(l => `<li><i class="dot ${l.kind}"></i><div class="t"><b>${esc(l.tag)}</b><span>${esc(LABEL[l.kind])} · ${esc(l.dept)}${l.note ? ' · ' + esc(l.note) : ''}</span></div><button class="x" data-id="${esc(l.id)}" type="button" aria-label="ลบ ${esc(l.tag)}">ลบ</button></li>`).join('');
+}
+$('log').addEventListener('click', e => {
+  const b = e.target.closest('button[data-id]'); if (!b) return;
+  const i = S.log.findIndex(l => l.id === b.dataset.id); if (i < 0) return;
+  const l = S.log[i];
+  if (!confirm('ลบการสแกน ' + l.tag + ' ?')) return;
+  const qi = S.queue.findIndex(r => r.id === l.id);
+  const done = () => {
+    S.log.splice(i, 1); S.count[l.kind]--; updateCounts(); renderLog();
+    if (l.prior) S.scanned.set(norm(l.tag), l.prior); else S.scanned.delete(norm(l.tag));
+    toast('ลบแล้ว');
+  };
+  if (qi >= 0) { S.queue.splice(qi, 1); persistQueue(); renderPending(); done(); }
+  else google.script.run.withSuccessHandler(done).withFailureHandler(() => toast('ลบไม่สำเร็จ ลองใหม่')).deleteScan(l.id);
+});
+
+/* ---------- คิวส่งข้อมูล (ทนเน็ตหลุด) ---------- */
+function persistQueue() { store({ queue: S.queue }); }
+function renderPending() {
+  const n = S.queue.length, el = $('sync');
+  el.textContent = n ? `รอส่ง ${n} รายการ` : 'บันทึกแล้ว';
+  el.className = 'badge' + (n ? ' pending' : '');
+}
+function flush() {
+  renderPending();
+  if (S.busy || !S.queue.length) return;
+  S.busy = true;
+  google.script.run
+    .withSuccessHandler(() => { S.queue.shift(); persistQueue(); S.busy = false; flush(); })
+    .withFailureHandler(() => { S.busy = false; renderPending(); setTimeout(flush, 5000); })
+    .saveScan(S.queue[0]);
+}
+window.addEventListener('online', flush);
+
+/* ---------- กล้อง ---------- */
+function loadLib() {
+  return new Promise((res, rej) => {
+    if (window.Html5Qrcode) return res();
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = res; s.onerror = () => rej(new Error('โหลดไลบรารีกล้องไม่ได้'));
+    document.head.appendChild(s);
+  });
+}
+async function stopCam() {
+  try { await S.cam.stop(); S.cam.clear(); } catch (e) {}
+  S.cam = null; $('reader').hidden = true; $('camBtn').textContent = 'เปิดกล้อง'; $('tag').focus();
+}
+$('camBtn').addEventListener('click', async () => {
+  if (S.cam) return stopCam();
+  try {
+    await loadLib();
+    $('reader').hidden = false;
+    S.cam = new Html5Qrcode('reader');
+    await S.cam.start({ facingMode: 'environment' },
+      { fps: 10, qrbox: (w, h) => ({ width: Math.min(320, w - 20), height: Math.min(150, h - 20) }),
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
+      txt => {
+        const now = Date.now();
+        if (txt === S.lastCode && now - S.lastAt < 3000) return; // กันอ่านซ้ำรัว ๆ
+        S.lastCode = txt; S.lastAt = now; handleScan(txt, false);
+      }, () => {});
+    $('camBtn').textContent = 'ปิดกล้อง';
+  } catch (e) {
+    S.cam = null; $('reader').hidden = true;
+    toast('เปิดกล้องไม่ได้ (' + (e && e.message || e) + ') ลองเปิดลิงก์ Web App ตรง ๆ ในเบราว์เซอร์ หรือใช้เครื่องสแกน');
+  }
+});
+
+/* ---------- สรุปผล ---------- */
+$('refresh').addEventListener('click', () => loadReport(true));
+function loadReport(force) {
+  if (S.report && !force) { renderReport(); renderFollow(); return; }
+  $('reportBody').innerHTML = '<p class="muted">กำลังโหลด…</p>';
+  google.script.run.withSuccessHandler(r => { S.report = r; renderReport(); renderFollow(); })
+    .withFailureHandler(e => { $('reportBody').innerHTML = `<p class="muted">โหลดไม่สำเร็จ: ${esc(e && e.message || e)}</p>`; })
+    .getReport();
+}
+const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+function renderReport() {
+  const r = S.report; if (!r) return;
+  const t = r.total, done = t.ok + t.moved;
+  const rows = Object.keys(r.depts).map(k => {
+    const d = r.depts[k];
+    return `<tr><td>${esc(k)}<div class="bar"><i class="b-ok" style="width:${pct(d.ok, d.registered)}%"></i><i class="b-mv" style="width:${pct(d.moved, d.registered)}%"></i></div></td>
+      <td>${d.registered}</td><td>${d.ok}</td><td>${d.moved}</td><td>${d.missing}</td><td>${pct(d.ok + d.moved, d.registered)}%</td></tr>`;
+  }).join('');
+  $('reportBody').innerHTML = `
+    <div class="kpi">
+      <div><strong>${t.registered}</strong><span>ตามทะเบียน</span></div>
+      <div><strong>${t.ok}</strong><span>ตรงทะเบียน</span></div>
+      <div><strong>${t.moved}</strong><span>ย้ายตำแหน่ง</span></div>
+      <div><strong>${t.missing}</strong><span>ยังไม่พบ</span></div>
+      <div><strong>${r.unknown.length}</strong><span>ไม่มีในทะเบียน</span></div>
+    </div>
+    <div class="card"><h2>ภาพรวม ${pct(done, t.registered)}%</h2>
+      <div class="bar"><i class="b-ok" style="width:${pct(t.ok, t.registered)}%"></i><i class="b-mv" style="width:${pct(t.moved, t.registered)}%"></i></div>
+      <p class="muted">เขียว = ตรงทะเบียน · เหลือง = พบแต่ย้ายตำแหน่ง · ที่เหลือ = ยังไม่พบ</p></div>
+    <div class="card"><h2>รายแผนก</h2><div style="overflow-x:auto"><table>
+      <tr><th>แผนก</th><th>ทะเบียน</th><th>ตรง</th><th>ย้าย</th><th>ไม่พบ</th><th>%</th></tr>${rows}</table></div></div>
+    <p class="muted">บันทึกทั้งหมด ${r.scanCount} ครั้ง</p>`;
+}
+
+/* ---------- รายการติดตาม ---------- */
+['fKind', 'fDept'].forEach(id => $(id).addEventListener('change', renderFollow));
+$('fSearch').addEventListener('input', renderFollow);
+function renderFollow() {
+  const r = S.report; if (!r) return;
+  const kind = $('fKind').value, dept = $('fDept').value, q = norm($('fSearch').value);
+  let list = r[kind] || [];
+  if (dept) list = list.filter(x => norm(kind === 'unknown' ? x.foundDept : x.dept) === norm(dept));
+  if (q) list = list.filter(x => norm([x.tag, x.serial, x.type].join(' ')).indexOf(q) >= 0);
+  $('fCount').textContent = `${list.length} รายการ`;
+  $('fList').innerHTML = list.slice(0, 300).map(x => {
+    let l2 = '', l3 = '';
+    if (kind === 'missing') { l2 = [x.type, x.serial && 'Serial ' + x.serial].filter(Boolean).join(' · '); l3 = `ทะเบียน: ${x.dept || '-'} · ผู้รับผิดชอบ: ${x.owner || '-'}`; }
+    if (kind === 'moved') { l2 = x.type; l3 = `ทะเบียน ${x.dept} → พบที่ ${x.foundDept}${x.by ? ' · ' + x.by : ''}${x.note ? ' · ' + x.note : ''}`; }
+    if (kind === 'unknown') { l2 = `พบที่ ${x.foundDept}`; l3 = `${x.by || ''}${x.note ? ' · ' + x.note : ''}`; }
+    return `<div class="item"><b>${esc(x.tag)}</b><div>${esc(l2)}</div><div>${esc(l3)}</div></div>`;
+  }).join('') + (list.length > 300 ? '<p class="muted">แสดง 300 รายการแรก ใช้ช่องค้นหาหรือเลือกแผนกเพื่อจำกัด</p>' : '');
+}
+</script>
+</body>
+</html>
