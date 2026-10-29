@@ -1,7 +1,11 @@
 // Google Apps Script — วางใน Extensions > Apps Script ของ Google Sheet
-const TOKEN = 'AssetsRam2#10240'; // ต้องตรงกับช่อง Token ในหน้าเว็บ
+const TOKEN = 'AssetsRam2#10240'; // ต้องตรงกับ SCRIPT_TOKEN ในหน้าเว็บ
 const SHEET_NAME = 'Assets';
-const HEADERS = ['ID', 'Tag', 'S/N', 'แผนก', 'ผู้บันทึก', 'วันเวลาที่บันทึก', 'เวลาส่งเข้าชีต'];
+const HEADERS = ['ID', 'Tag', 'S/N', 'แผนก', 'ผู้บันทึก', 'วันเวลาที่บันทึก', 'เวลาส่งเข้าชีต', 'รูป S/N'];
+
+// ---- ตั้งค่าโฟลเดอร์เก็บรูปใน Google Drive ----
+const PHOTO_FOLDER_ID = '';           // ว่าง = สร้างโฟลเดอร์อัตโนมัติไว้ที่เดียวกับไฟล์ชีตนี้ / หรือใส่ Folder ID เองได้
+const PHOTO_FOLDER_NAME = 'Asset_SN_Photos';
 
 // ---- ตั้งค่า Master ----
 const MASTER_FILE_ID = '';   // ว่าง = Master เป็นแท็บในไฟล์นี้ / ถ้าอยู่คนละไฟล์ ใส่ ID จาก URL ของไฟล์นั้น
@@ -33,8 +37,43 @@ function getSheet_() {
     sh.setFrozenRows(1);
     sh.getRange('A:F').setNumberFormat('@');
     sh.getRange('G:G').setNumberFormat('yyyy-mm-dd hh:mm:ss');
+  } else if (String(sh.getRange(1, 8).getValue()).trim() === '') {
+    // เพิ่มหัวคอลัมน์ "รูป S/N" อัตโนมัติกรณีมีแท็บ Assets อยู่แล้วจากเวอร์ชันเก่า
+    sh.getRange(1, 8).setValue('รูป S/N');
   }
   return sh;
+}
+
+function getPhotoFolder_() {
+  if (PHOTO_FOLDER_ID) return DriveApp.getFolderById(PHOTO_FOLDER_ID);
+  let parent = null;
+  try {
+    const parents = DriveApp.getFileById(SpreadsheetApp.getActiveSpreadsheet().getId()).getParents();
+    if (parents.hasNext()) parent = parents.next();
+  } catch (e) {}
+  if (!parent) parent = DriveApp.getRootFolder();
+  const existing = parent.getFoldersByName(PHOTO_FOLDER_NAME);
+  return existing.hasNext() ? existing.next() : parent.createFolder(PHOTO_FOLDER_NAME);
+}
+
+function savePhoto_(dataUrl, r) {
+  if (!dataUrl || typeof dataUrl !== 'string') return '';
+  const m = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!m) return '';
+  const mime = m[1];
+  const ext = mime.indexOf('png') >= 0 ? 'png' : 'jpg';
+  const bytes = Utilities.base64Decode(m[2]);
+  const safeLabel = String(r.sn || r.tag || r.id || 'asset').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
+  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Bangkok', 'yyyyMMdd_HHmmss');
+  const blob = Utilities.newBlob(bytes, mime, 'SN_' + safeLabel + '_' + stamp + '.' + ext);
+  const folder = getPhotoFolder_();
+  const file = folder.createFile(blob);
+  try {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {
+    // กรณีบัญชีองค์กรจำกัดสิทธิ์สาธารณะ จะยังเปิดได้ด้วยบัญชีในองค์กรผ่านลิงก์ปกติ
+  }
+  return file.getUrl();
 }
 
 function out_(obj) {
@@ -116,6 +155,23 @@ function doPost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     if (body.token !== TOKEN) return out_({ ok: false, error: 'Token ไม่ถูกต้อง' });
+    const incoming = body.records || [];
+
+    // เช็ค ID ที่มีอยู่แล้วเบื้องต้นและอัปโหลดรูปเข้า Drive ก่อนเข้า Lock เพื่อไม่ให้บล็อกคนอื่นนาน
+    const shPre = getSheet_();
+    const lastPre = shPre.getLastRow();
+    const preSeen = new Set(lastPre > 1 ? shPre.getRange(2, 1, lastPre - 1, 1).getValues().flat().map(String) : []);
+    const urls = {};
+    incoming.forEach(r => {
+      const id = String(r.id);
+      if (preSeen.has(id)) return;
+      if (r.photoUrl) {
+        urls[id] = String(r.photoUrl);
+      } else if (r.photoData) {
+        urls[id] = savePhoto_(r.photoData, r);
+      }
+    });
+
     const lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
@@ -123,20 +179,24 @@ function doPost(e) {
       const last = sh.getLastRow();
       const ids = last > 1 ? sh.getRange(2, 1, last - 1, 1).getValues().flat().map(String) : [];
       const seen = new Set(ids);
-      const rows = (body.records || [])
+      const rows = incoming
         .filter(r => !seen.has(String(r.id)))
-        .map(r => [r.id, r.tag, r.sn, r.dept, r.rec, String(r.dt).replace('T', ' '), new Date()]);
+        .map(r => {
+          const id = String(r.id);
+          const link = urls[id] || r.photoUrl || '';
+          return [id, r.tag || '', r.sn || '', r.dept || '', r.rec || '', String(r.dt || '').replace('T', ' '), new Date(), link];
+        });
       if (rows.length) {
         sh.getRange(last + 1, 1, rows.length, 6).setNumberFormat('@');
-        sh.getRange(last + 1, 1, rows.length, 1).offset(0, 6).setNumberFormat('yyyy-mm-dd hh:mm:ss');
+        sh.getRange(last + 1, 7, rows.length, 1).setNumberFormat('yyyy-mm-dd hh:mm:ss');
         sh.getRange(last + 1, 1, rows.length, rows[0].length).setValues(rows);
       }
-      return out_({ ok: true, added: rows.length });
+      return out_({ ok: true, added: rows.length, urls: urls });
     } finally {
       lock.releaseLock();
     }
   } catch (err) {
-    return out_({ ok: false, error: String(err) });
+    return out_({ ok: false, error: String(err.message || err) });
   }
 }
 
@@ -145,13 +205,20 @@ function onOpen() {
   SpreadsheetApp.getUi().createMenu('📦 Asset').addItem('เทียบกับ Master', 'compareWithMaster').addToUi();
 }
 
+// ใช้สำหรับกด Run ครั้งแรกในหน้า Apps Script เพื่อขอสิทธิ์เข้าถึง Google Drive (Authorize)
+function authorizeDrive() {
+  const folder = getPhotoFolder_();
+  Logger.log('พร้อมใช้งาน โฟลเดอร์เก็บรูป: ' + folder.getName() + ' (' + folder.getUrl() + ')');
+}
+
 function compareWithMaster() {
   const ui = SpreadsheetApp.getUi();
   let m;
   try { m = readMaster_(); } catch (err) { ui.alert(err.message); return; }
 
   const a = getSheet_(), last = a.getLastRow();
-  const scans = last > 1 ? a.getRange(2, 1, last - 1, 6).getDisplayValues() : [];
+  const maxCol = Math.max(a.getLastColumn(), 8);
+  const scans = last > 1 ? a.getRange(2, 1, last - 1, Math.min(maxCol, 8)).getDisplayValues() : [];
   const byTag = new Map(), bySn = new Map();
   scans.forEach((r, i) => { // ใช้การสแกนล่าสุดของแต่ละเลข
     const t = norm_(r[1]), s = norm_(r[2]);
@@ -172,21 +239,21 @@ function compareWithMaster() {
     const idx = t && byTag.has(t) ? byTag.get(t) : (s && bySn.has(s) ? bySn.get(s) : -1);
     if (idx < 0) {
       missing++;
-      data.push(['✘ ยังไม่พบ', mt, ms, md, '', '', '']);
+      data.push(['✘ ยังไม่พบ', mt, ms, md, '', '', '', '']);
       colors.push('#f8d7da');
     } else {
       matchedScanIdx.add(idx);
       const sc = scans[idx];
       const diff = m.iDept >= 0 && norm_(md) !== norm_(sc[3]);
       if (diff) { deptDiff++; } else { found++; }
-      data.push([diff ? '🔄 ย้ายแผนก' : '✔ พบแล้ว', mt, ms, md, sc[3], sc[4], sc[5]]);
+      data.push([diff ? '🔄 ย้ายแผนก' : '✔ พบแล้ว', mt, ms, md, sc[3], sc[4], sc[5], sc[7] || '']);
       colors.push(diff ? '#fff3cd' : '#d4edda');
     }
   });
 
   let extra = 0;
   const seenExtra = new Set();
-  // วนจากท้ายสุดเพื่อให้ได้ข้อมูลสแกนล่าสุดของรายการนอก Master และไม่แสดงซ้ำ
+  // วนจากท้ายสุดเพื่อให้ได้ข้อมูลสแกนล่าสุดของรายการนอก Master (รวมถึงรายการที่มีเฉพาะรูป S/N)
   for (let i = scans.length - 1; i >= 0; i--) {
     if (matchedScanIdx.has(i)) continue;
     const sc = scans[i];
@@ -196,22 +263,23 @@ function compareWithMaster() {
     if (key !== '|' && seenExtra.has(key)) continue;
     if (key !== '|') seenExtra.add(key);
     extra++;
-    data.push(['⚠ ไม่อยู่ใน Master', sc[1], sc[2], '', sc[3], sc[4], sc[5]]);
+    data.push(['⚠ ไม่อยู่ใน Master', sc[1], sc[2], '', sc[3], sc[4], sc[5], sc[7] || '']);
     colors.push('#ffe5b4');
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sh = ss.getSheetByName('Compare') || ss.insertSheet('Compare');
   sh.clear();
-  const head = ['สถานะ', 'Tag', 'S/N', 'แผนกเดิม (Master-old)', 'แผนกปัจจุบัน (สแกน)', 'ผู้บันทึก', 'วันเวลาที่สแกน'];
-  sh.getRange(1, 1, 1, 7).setValues([head]).setFontWeight('bold').setBackground('#e0e7ff');
+  const head = ['สถานะ', 'Tag', 'S/N', 'แผนกเดิม (Master-old)', 'แผนกปัจจุบัน (สแกน)', 'ผู้บันทึก', 'วันเวลาที่สแกน', 'รูป S/N'];
+  sh.getRange(1, 1, 1, 8).setValues([head]).setFontWeight('bold').setBackground('#e0e7ff');
   sh.setFrozenRows(1);
   if (data.length) {
-    sh.getRange(2, 1, data.length, 7).setNumberFormat('@').setValues(data)
-      .setBackgrounds(colors.map(c => Array(7).fill(c)));
+    sh.getRange(2, 1, data.length, 7).setNumberFormat('@');
+    sh.getRange(2, 1, data.length, 8).setValues(data)
+      .setBackgrounds(colors.map(c => Array(8).fill(c)));
   }
   const total = m.rows.length;
-  sh.getRange('I1:J6').setValues([
+  sh.getRange('J1:K6').setValues([
     ['สรุป', 'จำนวน'],
     ['ใน Master ทั้งหมด', total],
     ['✔ พบแล้ว', found],
@@ -219,8 +287,8 @@ function compareWithMaster() {
     ['✘ ยังไม่พบ', missing],
     ['⚠ สแกนแต่ไม่อยู่ใน Master', extra]
   ]);
-  sh.getRange('I1:J1').setFontWeight('bold').setBackground('#e0e7ff');
-  sh.autoResizeColumns(1, 10);
+  sh.getRange('J1:K1').setFontWeight('bold').setBackground('#e0e7ff');
+  sh.autoResizeColumns(1, 11);
   ss.setActiveSheet(sh);
   ui.alert('เทียบเสร็จ\n\nใน Master: ' + total + '\nพบแล้ว: ' + found + '\nแผนกไม่ตรง: ' + deptDiff +
     '\nยังไม่พบ: ' + missing + '\nสแกนแต่ไม่อยู่ใน Master: ' + extra);

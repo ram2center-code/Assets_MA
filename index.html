@@ -59,6 +59,11 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
 .dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--okbg)}
 .dot.warn{background:var(--warn);box-shadow:0 0 0 3px var(--warnbg)}
 .dot.bad{background:var(--bad);box-shadow:0 0 0 3px var(--badbg)}
+.photo-box{margin-top:8px;padding:8px 10px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);display:flex;align-items:center;gap:10px}
+.photo-box img{width:54px;height:54px;object-fit:cover;border-radius:7px;border:1px solid var(--bd);cursor:pointer;flex-shrink:0}
+.photo-info{flex:1;min-width:0;font-size:13px}
+.photo-link{color:var(--pri);text-decoration:none;font-weight:500}
+.photo-link:hover{text-decoration:underline}
 </style>
 </head>
 <body>
@@ -88,7 +93,19 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
   <label for="sn">S/N (กรณี Tag จางมองไม่เห็น)</label>
   <div class="row" id="snRow">
     <input id="sn" placeholder="Serial Number" autocomplete="off">
-    <button id="scanSn" type="button" class="sec">📷</button>
+    <button id="scanSn" type="button" class="sec" title="สแกนบาร์โค้ด S/N">📷</button>
+    <button id="photoBtn" type="button" class="sec" title="ถ่ายรูปป้าย S/N">📸 รูป</button>
+  </div>
+  <div class="hint">ถ่ายรูปป้าย S/N เก็บเข้าชีตได้ · <button id="pickFileBtn" type="button" class="link-btn">เลือกรูปจากอัลบั้ม</button></div>
+  <input id="photoCam" type="file" accept="image/*" capture="environment" hidden>
+  <input id="photoFile" type="file" accept="image/*" hidden>
+  <div id="photoBox" class="photo-box" hidden>
+    <img id="photoPreview" alt="ตัวอย่างรูป S/N">
+    <div class="photo-info">
+      <div><strong>แนบรูป S/N แล้ว</strong></div>
+      <div id="photoMeta" class="meta"></div>
+    </div>
+    <button id="photoClr" type="button" class="del" title="ลบรูป">✕ ลบ</button>
   </div>
 
   <div id="reader" hidden></div>
@@ -264,6 +281,60 @@ function setConn(state, text){
   $('connText').textContent=text;
 }
 
+let currentPhoto='';
+
+function clearPhoto(){
+  currentPhoto='';
+  $('photoBox').hidden=true;
+  $('photoPreview').removeAttribute('src');
+  $('photoCam').value='';
+  $('photoFile').value='';
+}
+
+function compressImage(file, maxSide=1280, quality=0.76){
+  return new Promise((resolve, reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error('อ่านไฟล์รูปไม่ได้'));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error('รูปแบบไฟล์รูปไม่รองรับ'));
+      img.onload=()=>{
+        let w=img.width, h=img.height;
+        if(w>maxSide||h>maxSide){
+          if(w>=h){h=Math.round(h*maxSide/w);w=maxSide}
+          else{w=Math.round(w*maxSide/h);h=maxSide}
+        }
+        const cv=document.createElement('canvas');
+        cv.width=w;cv.height=h;
+        const ctx=cv.getContext('2d');
+        ctx.fillStyle='#ffffff';
+        ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img,0,0,w,h);
+        resolve({dataUrl:cv.toDataURL('image/jpeg',quality),w,h});
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoSelect(e){
+  const f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  say('กำลังย่อขนาดรูป S/N…');
+  try{
+    const res=await compressImage(f);
+    currentPhoto=res.dataUrl;
+    const kb=Math.max(1,Math.round((res.dataUrl.length*3/4)/1024));
+    $('photoPreview').src=res.dataUrl;
+    $('photoMeta').textContent=`ขนาด ${res.w}×${res.h} px (~${kb} KB) · พร้อมส่งเข้า Google Drive`;
+    $('photoBox').hidden=false;
+    say('✔ แนบรูป S/N เรียบร้อย','ok');
+  }catch(err){
+    say('แนบรูปไม่สำเร็จ: '+err.message,'bad');
+  }
+}
+
 function render(){
   const q=$('q').value.trim().toLowerCase();
   const rows=recs.filter(r=>!q||[r.tag,r.sn,r.dept,r.rec].join(' ').toLowerCase().includes(q));
@@ -271,7 +342,12 @@ function render(){
   const pend=recs.filter(r=>!r.synced).length;
   $('syncState').textContent=pend?`· ⏳ ค้างส่ง ${pend} รายการ`:'· ซิงก์ครบแล้ว ✔';
   $('sync').hidden=!pend;
-  $('list').innerHTML=rows.length?rows.map(r=>`<div class="item"><div class="b"><b>${esc(r.tag||'(ไม่มี Tag)')}</b>${r.sn?` · S/N: ${esc(r.sn)}`:''}<div class="meta">${esc(r.dept)} · ${esc(r.rec)} · ${esc(fmt(r.dt))}${r.synced?' · <span class="ok">✔ ในชีต</span>':' · <span class="warn">⏳ รอส่ง</span>'}</div></div><button class="del" data-id="${r.id}" aria-label="ลบ">ลบ</button></div>`).join(''):'<div class="hint" style="margin-top:10px">ยังไม่มีรายการ</div>';
+  $('list').innerHTML=rows.length?rows.map(r=>{
+    const photoBadge=r.photoUrl
+      ?` · <a class="photo-link" href="${esc(r.photoUrl)}" target="_blank" rel="noopener">🖼️ ดูรูป S/N</a>`
+      :(r.photoData?' · <span>🖼️ มีรูปแนบ</span>':'');
+    return `<div class="item"><div class="b"><b>${esc(r.tag||'(ไม่มี Tag)')}</b>${r.sn?` · S/N: ${esc(r.sn)}`:''}<div class="meta">${esc(r.dept)} · ${esc(r.rec)} · ${esc(fmt(r.dt))}${photoBadge}${r.synced?' · <span class="ok">✔ ในชีต</span>':' · <span class="warn">⏳ รอส่ง</span>'}</div></div><button class="del" data-id="${r.id}" aria-label="ลบ">ลบ</button></div>`;
+  }).join(''):'<div class="hint" style="margin-top:10px">ยังไม่มีรายการ</div>';
 }
 
 /* ---------- Camera Scanner ---------- */
@@ -365,28 +441,31 @@ async function lookupMaster(t,s){
 function save(){
   const tag=$('tag').value.trim(), sn=$('sn').value.trim(), dept=$('dept').value.trim(), rec=$('rec').value.trim(), dt=$('dt').value;
   const nt=norm(tag), ns=norm(sn);
-  if(!nt&&!ns)return say('กรุณากรอก Tag หรือ S/N อย่างน้อยหนึ่งช่อง','bad');
+  if(!nt&&!ns&&!currentPhoto)return say('กรุณากรอก Tag / S/N หรือถ่ายรูปป้าย S/N อย่างน้อยหนึ่งอย่าง','bad');
   if(!dept){$('dept').focus();return say('กรุณาระบุแผนก','bad')}
   if(!rec){$('rec').focus();return say('กรุณาระบุผู้บันทึก','bad')}
   if(!dt)return say('กรุณาระบุวันเวลา','bad');
-  const dup=recs.some(r=>(nt&&norm(r.tag)===nt)||(ns&&norm(r.sn)===ns));
+  const dup=(nt||ns)&&recs.some(r=>(nt&&norm(r.tag)===nt)||(ns&&norm(r.sn)===ns));
   if(dup&&!confirm('มีเลข Tag หรือ S/N นี้อยู่แล้ว ต้องการบันทึกซ้ำหรือไม่?'))return;
-  recs.unshift({id:Date.now()+'-'+Math.random().toString(36).slice(2,6),tag,sn,dept,rec,dt});
+  const entry={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),tag,sn,dept,rec,dt};
+  if(currentPhoto)entry.photoData=currentPhoto;
+  recs.unshift(entry);
   prefs.rec=rec;prefs.dept=dept;
   prefs.depts=mergeUnique(prefs.depts,[dept]);
   prefs.users=mergeUnique(prefs.users,[rec]);
   persist();deptCombo.refresh();recCombo.refresh();render();
   $('tag').value='';$('sn').value='';$('dt').value=nowLocal();$('lookupBox').hidden=true;
-  say('✔ บันทึกแล้ว: '+(tag||sn),'ok');
+  clearPhoto();
+  say('✔ บันทึกแล้ว: '+(tag||sn||'รูปถ่าย S/N'),'ok');
   if(navigator.vibrate)navigator.vibrate(40);
   $('tag').focus();
   syncAll();
 }
 
 function toCSV(){
-  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
-  const head=['Tag','S/N','แผนก','ผู้บันทึก','วันเวลาที่บันทึก'];
-  return '\ufeff'+[head.map(q).join(',')].concat(recs.map(r=>[r.tag,r.sn,r.dept,r.rec,r.dt.replace('T',' ')].map(q).join(','))).join('\n');
+  const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+  const head=['Tag','S/N','แผนก','ผู้บันทึก','วันเวลาที่บันทึก','รูป S/N'];
+  return '\ufeff'+[head.map(q).join(',')].concat(recs.map(r=>[r.tag,r.sn,r.dept,r.rec,r.dt.replace('T',' '),r.photoUrl||(r.photoData?'(รอซิงก์รูปขึ้นชีต)':'')].map(q).join(','))).join('\n');
 }
 async function exportCSV(){
   if(!recs.length)return say('ยังไม่มีข้อมูลให้ส่งออก','bad');
@@ -417,20 +496,48 @@ async function fetchLists(manual){
   }
 }
 
+function nextSyncBatch(pend){
+  const batch=[];
+  let photos=0;
+  for(const r of pend){
+    if(r.photoData){
+      if(photos>=2&&batch.length)break;
+      photos++;
+    }
+    batch.push(r);
+    if(photos>=2||batch.length>=25)break;
+  }
+  return batch;
+}
+
 async function syncAll(manual){
-  const pend=recs.filter(r=>!r.synced);
+  let pend=recs.filter(r=>!r.synced);
   if(!pend.length){if(manual)say('ไม่มีรายการค้างส่ง','ok');return}
   if(syncing){syncMore=true;return}
   syncing=true;syncMore=false;
-  let ok=false;
+  let totalSent=0, ok=false;
   try{
-    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({token:SCRIPT_TOKEN,records:pend})});
-    const j=await res.json();
-    if(!j.ok)throw new Error(j.error||'ส่งไม่สำเร็จ');
-    setConn('ok','เชื่อมต่อ Google Sheet แล้ว');
-    const ids=new Set(pend.map(r=>r.id));
-    recs.forEach(r=>{if(ids.has(r.id))r.synced=true});
-    persist();render();say(`✔ ส่งเข้า Google Sheet แล้ว ${pend.length} รายการ`,'ok');
+    while(pend.length){
+      const batch=nextSyncBatch(pend);
+      if(batch.some(r=>r.photoData)) say(`กำลังอัปโหลดข้อมูลและรูป S/N เข้า Google Drive…`);
+      const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({token:SCRIPT_TOKEN,records:batch})});
+      const j=await res.json();
+      if(!j.ok)throw new Error(j.error||'ส่งไม่สำเร็จ');
+      setConn('ok','เชื่อมต่อ Google Sheet แล้ว');
+      const ids=new Set(batch.map(r=>r.id));
+      const urls=j.urls||{};
+      recs.forEach(r=>{
+        if(ids.has(r.id)){
+          r.synced=true;
+          if(urls[r.id])r.photoUrl=urls[r.id];
+          delete r.photoData; // ล้างรูป base64 ในเครื่องหลังขึ้น Drive แล้วเพื่อประหยัดเนื้อที่
+        }
+      });
+      totalSent+=batch.length;
+      persist();render();
+      pend=recs.filter(r=>!r.synced);
+    }
+    say(`✔ ส่งเข้า Google Sheet แล้ว ${totalSent} รายการ`,'ok');
     ok=true;
   }catch(e){
     setConn('bad','เชื่อมต่อชีตไม่ได้ (เก็บในเครื่องไว้ก่อน)');
@@ -465,6 +572,12 @@ window.addEventListener('online',()=>checkConn(false));
 window.addEventListener('offline',()=>setConn('bad','ออฟไลน์ (บันทึกในเครื่องก่อน)'));
 $('scanBtn').onclick=()=>startScan('tag');
 $('scanSn').onclick=()=>startScan('sn');
+$('photoBtn').onclick=()=>$('photoCam').click();
+$('pickFileBtn').onclick=()=>$('photoFile').click();
+$('photoCam').onchange=handlePhotoSelect;
+$('photoFile').onchange=handlePhotoSelect;
+$('photoClr').onclick=clearPhoto;
+$('photoPreview').onclick=()=>{if(currentPhoto){const w=window.open();if(w)w.document.write(`<img src="${currentPhoto}" style="max-width:100%">`)}};
 $('save').onclick=save;
 $('exp').onclick=exportCSV;
 $('q').oninput=render;
