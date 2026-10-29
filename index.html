@@ -19,7 +19,9 @@ label:first-child{margin-top:0}
 input{width:100%;padding:11px 12px;font-size:16px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);color:var(--tx)}
 input:focus{outline:2px solid var(--pri);border-color:transparent}
 .row{display:flex;gap:8px;align-items:center}
-button{font:inherit;border:0;border-radius:10px;padding:11px 14px;background:var(--pri);color:var(--prit);cursor:pointer;font-weight:600;white-space:nowrap}
+[hidden]{display:none!important}
+button{font:inherit;border:0;border-radius:10px;padding:11px 14px;background:var(--pri);color:var(--prit);cursor:pointer;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ico{width:19px;height:19px;flex-shrink:0}
 button.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
 button.del{background:transparent;color:var(--bad);padding:6px 8px}
 button.big{width:100%;margin-top:14px;padding:14px;font-size:17px}
@@ -86,15 +88,15 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
   <label for="tag">Tag (Asset No.)</label>
   <div class="row" id="tagRow">
     <input id="tag" placeholder="สแกนหรือพิมพ์เลข Tag" autocomplete="off">
-    <button id="scanBtn" type="button">📷 สแกน</button>
+    <button id="scanBtn" type="button"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M14 8v8M17 8v8"/></svg> สแกน</button>
   </div>
   <div class="hint">ใช้กล้องมือถือสแกนบาร์โค้ด/QR บน Tag</div>
 
   <label for="sn">S/N (กรณี Tag จางมองไม่เห็น)</label>
   <div class="row" id="snRow">
     <input id="sn" placeholder="Serial Number" autocomplete="off">
-    <button id="scanSn" type="button" class="sec" title="สแกนบาร์โค้ด S/N">📷</button>
-    <button id="photoBtn" type="button" class="sec" title="ถ่ายรูปป้าย S/N">📸 รูป</button>
+    <button id="scanSn" type="button" class="sec" title="สแกนบาร์โค้ด S/N" aria-label="สแกนบาร์โค้ด S/N"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M14 8v8M17 8v8"/></svg></button>
+    <button id="photoBtn" type="button" class="sec" title="ถ่ายรูปป้าย S/N">📷 รูป</button>
   </div>
   <div class="hint">ถ่ายรูปป้าย S/N เก็บเข้าชีตได้ · <button id="pickFileBtn" type="button" class="link-btn">เลือกรูปจากอัลบั้ม</button></div>
   <input id="photoCam" type="file" accept="image/*" capture="environment" hidden>
@@ -161,7 +163,7 @@ textarea{width:100%;height:140px;margin-top:8px;border:1px solid var(--bd);borde
 <script>
 const $=id=>document.getElementById(id);
 const KEY='asset_records_v1', PK='asset_prefs_v1';
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxwpCcQ29KVocQrenEB9Ft5qUtl_znXyC3BQrtUdNiMKm-r7Uzf3qXU_lJjoErx-7D2sg/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbwLiBpqwnWkPzIl4ZWjsMaDdp_-ldYNdlZLxFpuRe0Yebm2z3SHX-BpEyVZOcwRYEEP2A/exec';
 const SCRIPT_TOKEN='AssetsRam2#10240';
 let recs=[], prefs={rec:'',dept:'',depts:[],users:[],customDepts:[],customUsers:[]}, scanner=null, stopping=false, target=null;
 
@@ -350,10 +352,10 @@ function render(){
   }).join(''):'<div class="hint" style="margin-top:10px">ยังไม่มีรายการ</div>';
 }
 
-/* ---------- Camera Scanner ---------- */
+const BARCODE_SVG='<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8v8M10 8v8M14 8v8M17 8v8"/></svg>';
 function resetScanBtns(){
-  $('scanBtn').textContent='📷 สแกน';
-  $('scanSn').textContent='📷';
+  $('scanBtn').innerHTML=BARCODE_SVG+' สแกน';
+  $('scanSn').innerHTML=BARCODE_SVG;
 }
 async function stopScan(){
   if(stopping)return;
